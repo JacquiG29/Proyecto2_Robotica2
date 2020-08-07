@@ -7,5 +7,5 @@ centralWidgetVisible: 1
 selectionDisabled: 0
 viewpointLocked: 0
 orthographicViewHeight: 1
-textFiles: 1 "controllers/pioneer3dxbase/pioneer3dxbase.c" "controllers/my_controller/my_controller.m"
+textFiles: 2 "controllers/pioneer3dxbase/pioneer3dxbase.c" "controllers/my_controller/my_controller.m" "controllers/pioneer3dx_collision_avoidance/pioneer3dx_collision_avoidance.c"
 renderingDevicePerspectives: Pioneer 3-DX:camera;1;2.75;0;0

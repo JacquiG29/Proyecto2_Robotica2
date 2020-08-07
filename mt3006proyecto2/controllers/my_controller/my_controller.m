@@ -17,13 +17,15 @@ WHEEL_RADIUS = (195/2000.0);
 DISTANCE_FROM_CENTER = (381/2000.0);
 MAX_SENSOR_VALUE = 1024;
 range = MAX_SENSOR_VALUE / 2;
-SPEED_UNIT=0.00628;
+max_speed = 5.24;
+SPEED_UNIT=max_speed/1000;
+
 %minimal distance, in meters, for an obstacle to be considered
 MIN_DISTANCE = 1.0;
 %minimal weight for the robot to turn
 WHEEL_WEIGHT_THRESHOLD = 100;
 
-goal_points= [-4,0; 2,4; 3,-4; 2,-4];
+goal_points= [-4,0; 2,4; -3.5,3.5; 2,-4];
 
 braitenberg_matrix = [
     150 0;
@@ -69,8 +71,8 @@ wb_compass_enable(orientation_sensor, TIME_STEP);
 
 % get and enable all distance sensors
 for i = [1:MAX_SENSOR_NUMBER]
-  sonar(i) = wb_robot_get_device(strcat('so', num2str(i - 1)));
-  wb_distance_sensor_enable(sonar(i), time_step);
+    sonar(i) = wb_robot_get_device(strcat('so', num2str(i - 1)));
+    wb_distance_sensor_enable(sonar(i), time_step);
 end
 %period = wb_gps_get_sampling_period(tag)
 %x_y_z_array = wb_gps_get_values(tag)
@@ -100,16 +102,21 @@ e_k=0;
 eD=0;
 u_k=0;
 
-% CONSTANTES DEL PID 
+% CONSTANTES DEL PID
 kP=0.8;
 kD=0.0001;
 kI=0.01;
 alpha=0.9;
-
+speed=zeros(1,2);
 %controlador=1;
-controlador=2;
+controlador=1;
 % main loop:
 while wb_robot_step(TIME_STEP) ~= -1
+    for i = [1:MAX_SENSOR_NUMBER]
+        sensor_values(i) = wb_distance_sensor_get_value(sonar(i));
+    end
+    disp(sensor_values(1:8));
+    
     north = wb_compass_get_values(orientation_sensor);
     rad = atan2(north(1,1), north(1,3));
     
@@ -118,6 +125,11 @@ while wb_robot_step(TIME_STEP) ~= -1
     zi=pos(1,3);
     
     angle=rad;
+    if(sum((sensor_values(1:8)./1024)>0.85) ~= 0)
+        controlador = 2;
+    else
+        controlador = 1;
+    end
     
     if (controlador==1)
         
@@ -144,15 +156,19 @@ while wb_robot_step(TIME_STEP) ~= -1
     end
     
     if (controlador==2)
-    
-      for i = [1:MAX_SENSOR_NUMBER]
-        sensor_values(i) = wb_distance_sensor_get_value(sonar(i));
-      end
-      
-      speed = SPEED_UNIT *(1 - (sensor_values /range)) * braitenberg_matrix;
-      speed = min(speed, 1000);
-      left_speed =speed(1,1);
-      right_speed =speed(1,2);
+        
+        speed = speed + SPEED_UNIT *(1 - (sensor_values /range)) * braitenberg_matrix;
+        
+        for i = 1:2
+            if speed(i) < -max_speed
+                speed(i) = -max_speed;
+            elseif speed(i) > max_speed
+                speed(i) = max_speed;
+            end
+        end
+
+        left_speed =speed(1,1);
+        right_speed =speed(1,2);
     end
     
     wb_motor_set_velocity(left_wheel, left_speed);
