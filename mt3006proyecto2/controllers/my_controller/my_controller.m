@@ -14,9 +14,34 @@ TIME_STEP = 64;
 MAX_SPEED = 1;
 MAX_SENSOR_NUMBER = 16;
 WHEEL_RADIUS = (195/2000.0);
-DISTANCE_FROM_CENTER = (381/2000.0)
+DISTANCE_FROM_CENTER = (381/2000.0);
+MAX_SENSOR_VALUE = 1024;
+range = MAX_SENSOR_VALUE / 2;
+SPEED_UNIT=0.00628;
+%minimal distance, in meters, for an obstacle to be considered
+MIN_DISTANCE = 1.0;
+%minimal weight for the robot to turn
+WHEEL_WEIGHT_THRESHOLD = 100;
+
 goal_points= [-4,0; 2,4; 3,-4; 2,-4];
 
+braitenberg_matrix = [
+    150 0;
+    200, 0;
+    300, 0;
+    600, 0;
+    0, 600;
+    0, 300;
+    0, 200;
+    0, 150;
+    0, 0;
+    0, 0;
+    0, 0;
+    0, 0;
+    0, 0;
+    0, 0;
+    0, 0;
+    0, 0 ];
 % get and enable devices, e.g.:
 %  camera = wb_robot_get_device('camera');
 %  wb_camera_enable(camera, TIME_STEP);
@@ -42,6 +67,11 @@ wb_motor_set_velocity(right_wheel, 0.0);
 wb_gps_enable(position_sensor, TIME_STEP);
 wb_compass_enable(orientation_sensor, TIME_STEP);
 
+% get and enable all distance sensors
+for i = [1:MAX_SENSOR_NUMBER]
+  sonar(i) = wb_robot_get_device(strcat('so', num2str(i - 1)));
+  wb_distance_sensor_enable(sonar(i), time_step);
+end
 %period = wb_gps_get_sampling_period(tag)
 %x_y_z_array = wb_gps_get_values(tag)
 %speed = wb_gps_get_speed(tag)
@@ -76,7 +106,8 @@ kD=0.0001;
 kI=0.01;
 alpha=0.9;
 
-controlador=1;
+%controlador=1;
+controlador=2;
 % main loop:
 while wb_robot_step(TIME_STEP) ~= -1
     north = wb_compass_get_values(orientation_sensor);
@@ -107,10 +138,23 @@ while wb_robot_step(TIME_STEP) ~= -1
         e_k_1 = e_k;%actualizar las variables
         
         v=MAX_SPEED*(1-exp(-ep*ep*alpha))/ep;%velocidad uniciclo
+        
+        left_speed =(v-u_k*DISTANCE_FROM_CENTER)/WHEEL_RADIUS;
+        right_speed =(v+u_k*DISTANCE_FROM_CENTER)/WHEEL_RADIUS;
     end
     
-    left_speed =(v-u_k*DISTANCE_FROM_CENTER)/WHEEL_RADIUS;
-    right_speed =(v+u_k*DISTANCE_FROM_CENTER)/WHEEL_RADIUS;
+    if (controlador==2)
+    
+      for i = [1:MAX_SENSOR_NUMBER]
+        sensor_values(i) = wb_distance_sensor_get_value(sonar(i));
+      end
+      
+      speed = SPEED_UNIT *(1 - (sensor_values /range)) * braitenberg_matrix;
+      speed = min(speed, 1000);
+      left_speed =speed(1,1);
+      right_speed =speed(1,2);
+    end
+    
     wb_motor_set_velocity(left_wheel, left_speed);
     wb_motor_set_velocity(right_wheel, right_speed);
     

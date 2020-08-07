@@ -165,7 +165,7 @@ SolidPipe {
 Pioneer3dx {
   translation -3.5 0.0975 -3.5
   rotation 0 1 0 3.14159
-  controller "pioneer3dxbase"
+  controller "my_controller"
   extensionSlot [
     Camera {
       translation 0 0.15 -0.175
