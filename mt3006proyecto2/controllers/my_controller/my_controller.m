@@ -21,7 +21,7 @@ max_speed = 5.24;
 SPEED_UNIT=max_speed/1000;
 
 %minimal distance, in meters, for an obstacle to be considered
-MIN_DISTANCE = 1.0;
+MIN_DISTANCE = 1;
 %minimal weight for the robot to turn
 WHEEL_WEIGHT_THRESHOLD = 100;
 
@@ -45,8 +45,8 @@ braitenberg_matrix = [
     0, 0;
     0, 0 ];
 % get and enable devices, e.g.:
-%  camera = wb_robot_get_device('camera');
-%  wb_camera_enable(camera, TIME_STEP);
+camera = wb_robot_get_device('camera');
+wb_camera_enable(camera, TIME_STEP);
 %  motor = wb_robot_get_device('motor');
 time_step  = wb_robot_get_basic_time_step();
 
@@ -81,8 +81,8 @@ end
 pos=0;%constant double
 angle=0;
 
-xf = goal_points(2,1);
-zf = goal_points(2,2);
+xf = goal_points(3,1);
+zf = goal_points(3,2);
 
 xi=0;
 zi=0;
@@ -125,10 +125,15 @@ while wb_robot_step(TIME_STEP) ~= -1
     zi=pos(1,3);
     
     angle=rad;
-    if(sum((sensor_values(1:8)./1024)>0.85) ~= 0)
+    
+    distance =  5*(1.0 - (sensor_values / MAX_SENSOR_VALUE));
+    
+    for i = 1:MAX_SENSOR_NUMBER
+    if((distance(i))<MIN_DISTANCE)
         controlador = 2;
     else
         controlador = 1;
+    end
     end
     
     if (controlador==1)
@@ -156,8 +161,9 @@ while wb_robot_step(TIME_STEP) ~= -1
     end
     
     if (controlador==2)
-        
-        speed = speed + SPEED_UNIT *(1 - (sensor_values /range)) * braitenberg_matrix;
+         
+        speed_modifier = 1 - (sensor_values /range);
+        speed = speed + SPEED_UNIT *(speed_modifier) * braitenberg_matrix;
         
         for i = 1:2
             if speed(i) < -max_speed

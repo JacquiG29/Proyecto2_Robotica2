@@ -2,8 +2,8 @@
 WorldInfo {
 }
 Viewpoint {
-  orientation 0.0024059877333251103 -0.9677176883210102 -0.25202517123031015 3.160068987837901
-  position 0.2743460849572637 7.220804624456061 -11.970212679105412
+  orientation 1 0 0 4.71238898038469
+  position -0.2355106426047704 14.203402092032645 -0.18530192172996893
 }
 TexturedBackground {
 }
@@ -165,6 +165,7 @@ SolidPipe {
 Pioneer3dx {
   translation -3.5 0.0975 -3.5
   rotation 0 1 0 3.14159
+  controller "my_controller"
   extensionSlot [
     Camera {
       translation 0 0.15 -0.175
