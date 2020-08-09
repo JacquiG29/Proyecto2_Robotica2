@@ -18,8 +18,8 @@ DISTANCE_FROM_CENTER = (381 / 2000.0);
 MAX_SENSOR_VALUE = 1024;
 range = MAX_SENSOR_VALUE / 2;
 max_speed = 5.24;
-SPEED_UNIT = max_speed / 1000;
-MIN_DISTANCE = 1;
+SPEED_UNIT = max_speed / 1024;
+MIN_DISTANCE = 0.1;
 WHEEL_WEIGHT_THRESHOLD = 100;  % minimal weight for the robot to turn
 
 goal_points= [-4, 0; 
@@ -86,7 +86,7 @@ xi = 0;
 zi = 0;
 
 alpha = 0.9;
-speed = zeros(1,2);
+
 
 controlador = 1;
 epsilon = 0.5;
@@ -111,8 +111,13 @@ kP = 0.8;
 kD = 0.0001;
 kI = 0.01;
 
+speed = zeros(1,2);
+state = "f";
 %% MAIN LOOP
 while wb_robot_step(TIME_STEP) ~= -1
+    
+    wheel_weight_total = zeros(1, 2);
+    
     %  Lectura de todos los sensores
     for k = 1:MAX_SENSOR_NUMBER
         sensor_values(k) = wb_distance_sensor_get_value(sonar(k));
@@ -127,24 +132,29 @@ while wb_robot_step(TIME_STEP) ~= -1
     
     angle = rad;
     
+    bin_sens_val = sensor_values ~= zeros(size(sensor_values));
+    bin_sens_val(9:end) = zeros(1, 8);
     distance =  5 * (1.0 - (sensor_values / MAX_SENSOR_VALUE));
+    bin_dist_val =  distance < MIN_DISTANCE;
+    speed_modifier = bin_sens_val.*bin_dist_val.*(1 - (distance / MIN_DISTANCE));
+    wheel_weight_total = wheel_weight_total + sum(speed_modifier'.*braitenberg_matrix);
     
     for k = 1:MAX_SENSOR_NUMBER
         if distance(k) < MIN_DISTANCE
             controlador = 2;
+            break
         else
             controlador = 1;
         end
     end
-    
-    statement = zi <= zf - epsilon || zi >= zf + epsilon;
+
     
     if (xi >= xf - epsilon) && (xi <= xf + epsilon) && (zi >= zf - epsilon) && (zi <= zf + epsilon)
         controlador = 0;
     end
     
     formatSpec = 'xi: %.2f - zi: %.2f control: %d \n';
-    fprintf(formatSpec, xi, zi, statement);
+    fprintf(formatSpec, xi, zi, controlador);
     
     % ------------- OFF ------------- 
     if controlador == 0
@@ -174,11 +184,12 @@ while wb_robot_step(TIME_STEP) ~= -1
         left_speed = (v - u_k*DISTANCE_FROM_CENTER)/WHEEL_RADIUS;
         right_speed = (v + u_k*DISTANCE_FROM_CENTER)/WHEEL_RADIUS;
         
-    % ------------- Braitenberg -------------     
+        % ------------- Braitenberg -------------
     elseif controlador == 2
-        speed_modifier = 1 - (sensor_values/range);
-        speed = speed + SPEED_UNIT*(speed_modifier)*braitenberg_matrix;
+        %         speed_modifier = 1 - (sensor_values/range);
+        %         speed = speed + SPEED_UNIT*(speed_modifier)*braitenberg_matrix;
         
+        [speed, state] = braitenberg(state, wheel_weight_total, speed, WHEEL_WEIGHT_THRESHOLD, MAX_SPEED);
         for k = 1:2
             if speed(k) < -max_speed
                 speed(k) = -max_speed;
@@ -186,7 +197,6 @@ while wb_robot_step(TIME_STEP) ~= -1
                 speed(k) = max_speed;
             end
         end
-        
         left_speed = speed(1, 1);
         right_speed = speed(1, 2);
     end
