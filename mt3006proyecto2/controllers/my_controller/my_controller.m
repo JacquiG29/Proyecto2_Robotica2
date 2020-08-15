@@ -1,7 +1,7 @@
-%% IE - 3006 Rob�tica 2
+%% IE - 3006 Robï¿½tica 2
 % Jacqueline Guarcax
 % Gabriela Iriarte
-% Proyecto 2: Robot gu�a tur�stico
+% Proyecto 2: Robot guï¿½a turï¿½stico
 
 %% Activar debugging
 % uncomment the next two lines if you want to use
@@ -9,7 +9,7 @@
 desktop;
 %keyboard;
 
-%% Par�metros de Webots
+%% Parï¿½metros de Webots
 TIME_STEP = 64;
 MAX_SPEED = 1;
 MAX_SENSOR_NUMBER = 16;
@@ -138,9 +138,9 @@ paquita=0;
 while wb_robot_step(TIME_STEP) ~= -1
     
     wheel_weight_total = zeros(1, 2);
-    paquita=paquita+1;
+    paquita=paquita+1
 
-    if paquita==1
+    if paquita==120
         rgb = wb_camera_get_image(camera);
         image(rgb);
         title('RGB Camera');
@@ -149,10 +149,13 @@ while wb_robot_step(TIME_STEP) ~= -1
         BWR = imfill(BWR, 4, 'holes');
         %BWR = bwmorph(BWR,'open');
         s1 = regionprops(BWR, 'centroid');
-        centroide = cat(1, s1.Centroid);
+        centroide = cat(1, s1.Centroid)';
         disp(centroide)
         
-        %imshow(BWR)
+        imshow(rgb)
+        hold on
+        plot(centroide(1,:),centroide(2,:),'b*')
+        hold off
     end
     % if paquita==2
        
