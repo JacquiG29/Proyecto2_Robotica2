@@ -145,20 +145,22 @@ while wb_robot_step(TIME_STEP) ~= -1
     figure(1)
     rgb = wb_camera_get_image(camera);
     image(rgb);
-    title('RGB Camera');    
+    title('RGB Camera');
     
-    %Thresholding del color 
+    %Thresholding del color
     [BWR, maskedRGBImageR] = createMask(rgb);
     BWR = imfill(BWR, 4, 'holes');
-    BWR=bwareaopen(BWR,20);
+    BWR=bwareaopen(BWR,25);
+    figure(2)
+    imshow(BWR)
     if sum(BWR(:))> 0
-      s1 = regionprops(BWR, 'centroid');     
-      centroide = round(s1.Centroid');
-      disp(centroide)
-    else 
-     centroide=[half_width;0];
-     disp(centroide)
-    end 
+        s1 = regionprops(BWR, 'centroid');
+        centroide = s1.Centroid';
+        disp(centroide)
+    else
+        centroide=[half_width;0];
+        disp(centroide)
+    end
     
     
     %  Lectura de todos los sensores
@@ -207,23 +209,29 @@ while wb_robot_step(TIME_STEP) ~= -1
     
     % ------------- OFF -------------
     if controlador == 0
-
+        
         u0=half_width;
         v0=half_height;
-
-        s = centroide;
         
-        ud = u0;
-        vd = v0;
+        s = centroide-[u0,v0];%diferencia entre 
         
-        v = 0.1*sign(s(2)-(2*v0))*(vd-s(2));
-        w = 0.01*(ud-s(1));
+        ud = 0;
+        vd = -22;
+        
+        ev=vd-s(2);
+        ew=ud-s(1);
+        
+        v = 0.1*sign(s(2))*(ev);
+        w = 0.01*(ew);
+        
+        formatSpec = 's1: %.2f s2: %.2f  ev: %.2f ew: %.2f\n';
+        fprintf(formatSpec, s(1),s(2), ev, ew);
         
         left_speed = (v - w*DISTANCE_FROM_CENTER)/WHEEL_RADIUS;
         right_speed = (v + w*DISTANCE_FROM_CENTER)/WHEEL_RADIUS;
         
         speed = [left_speed,right_speed]
-          for k = 1:2
+        for k = 1:2
             if speed(k) < -max_speed
                 speed(k) = -max_speed;
             elseif speed(k) > max_speed
@@ -280,7 +288,7 @@ while wb_robot_step(TIME_STEP) ~= -1
     % read the sensors, e.g.:
     
     % Process here sensor data, images, etc.
-     
+    
     % send actuator commands, e.g.:
     %  wb_motor_set_postion(motor, 10.0);
     
