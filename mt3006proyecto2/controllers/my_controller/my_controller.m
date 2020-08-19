@@ -19,13 +19,13 @@ MAX_SENSOR_VALUE = 1024;
 range = MAX_SENSOR_VALUE / 2;
 max_speed = 5.24;
 SPEED_UNIT = max_speed / 1024;
-MIN_DISTANCE = 0.09;
+MIN_DISTANCE = 0.1;
 WHEEL_WEIGHT_THRESHOLD = 100;  % minimal weight for the robot to turn
 
-goal_points= [-4, 0; 
-               2, 4; 
-            -3.5, 3.5; 
-               2, -4];
+goal_points= [-4, 0;
+    2, 4;
+    -3.5, 3.5;
+    2, -4];
 
 braitenberg_matrix = [
     150 0;
@@ -93,7 +93,7 @@ alpha = 0.9;
 
 
 controlador = 1;
-epsilon = 0.5;
+epsilon = 1.8;
 sensor_values = zeros(1, MAX_SENSOR_NUMBER);
 
 %% Variables PID
@@ -125,6 +125,7 @@ BT_C = [BR_C, Bo_C; 0,0,0,1];
 
 
 f = wb_camera_get_focal_length(camera);
+disp(f)
 half_width = floor(wb_camera_get_width(camera) / 2);
 half_height = floor(wb_camera_get_height(camera) / 2);
 
@@ -138,28 +139,27 @@ paquita=0;
 while wb_robot_step(TIME_STEP) ~= -1
     
     wheel_weight_total = zeros(1, 2);
-    paquita=paquita+1
-
-    if paquita==120
-        rgb = wb_camera_get_image(camera);
-        image(rgb);
-        title('RGB Camera');
-        
-        [BWR, maskedRGBImageR] = createMask(rgb);
-        BWR = imfill(BWR, 4, 'holes');
-        %BWR = bwmorph(BWR,'open');
-        s1 = regionprops(BWR, 'centroid');
-        centroide = cat(1, s1.Centroid)';
-        disp(centroide)
-        
-        imshow(rgb)
-        hold on
-        plot(centroide(1,:),centroide(2,:),'b*')
-        hold off
-    end
-    % if paquita==2
-       
-     %end
+    
+    
+    %Visualizaci�n constante de la c�mara
+    figure(1)
+    rgb = wb_camera_get_image(camera);
+    image(rgb);
+    title('RGB Camera');    
+    
+    %Thresholding del color 
+    [BWR, maskedRGBImageR] = createMask(rgb);
+    BWR = imfill(BWR, 4, 'holes');
+    BWR=bwareaopen(BWR,20);
+    if sum(BWR(:))> 0
+      s1 = regionprops(BWR, 'centroid');     
+      centroide = round(s1.Centroid');
+      disp(centroide)
+    else 
+     centroide=[half_width;0];
+     disp(centroide)
+    end 
+    
     
     %  Lectura de todos los sensores
     for k = 1:MAX_SENSOR_NUMBER
@@ -183,42 +183,57 @@ while wb_robot_step(TIME_STEP) ~= -1
     wheel_weight_total = wheel_weight_total + sum(speed_modifier'.*braitenberg_matrix);
     
     for k = 1:MAX_SENSOR_NUMBER
-        if distance(k) < MIN_DISTANCE
-            controlador = 2;
-            break
-        else
-            controlador = 1;
+        if not(controlador == 0)
+            if distance(k) < MIN_DISTANCE
+                controlador = 2;
+                break
+            else
+                controlador = 1;
+            end
+            
         end
     end
-
+    
     
     if (xi >= xf - epsilon) && (xi <= xf + epsilon) && (zi >= zf - epsilon) && (zi <= zf + epsilon)
         controlador = 0;
+        
     end
     
-    formatSpec = 'xi: %.2f - zi: %.2f control: %d \n';
-    %fprintf(formatSpec, xi, zi, controlador);
     
-    % ------------- OFF ------------- 
+    
+    formatSpec = 'xi: %.2f - zi: %.2f control: %d \n';
+    fprintf(formatSpec, xi, zi, controlador);
+    
+    % ------------- OFF -------------
     if controlador == 0
-        %left_speed = 0;
-        %right_speed = 0;
+
         u0=half_width;
         v0=half_height;
 
-        s = [0,0] - [u0;v0];
-        %lambda = ls(3);
+        s = centroide;
         
-        ud = 0;
-        vd = 0;
+        ud = u0;
+        vd = v0;
         
-        v = 0.05*sign(s(2))*(vd-s(2));
-        w = 0.05*(ud-s(1));
-        
+        v = 0.1*sign(s(2)-(2*v0))*(vd-s(2));
+        w = 0.01*(ud-s(1));
         
         left_speed = (v - w*DISTANCE_FROM_CENTER)/WHEEL_RADIUS;
         right_speed = (v + w*DISTANCE_FROM_CENTER)/WHEEL_RADIUS;
-    % ------------- PID ------------- 
+        
+        speed = [left_speed,right_speed]
+          for k = 1:2
+            if speed(k) < -max_speed
+                speed(k) = -max_speed;
+            elseif speed(k) > max_speed
+                speed(k) = max_speed;
+            end
+        end
+        left_speed = speed(1, 1);
+        right_speed = speed(1, 2);
+        
+        % ------------- PID -------------
     elseif controlador == 1
         % Error de posicion
         ex = xf - xi;
@@ -243,8 +258,8 @@ while wb_robot_step(TIME_STEP) ~= -1
         
         % ------------- Braitenberg -------------
     elseif controlador == 2
-                 %speed_modifier = 1 - (sensor_values/range);
-                 %speed = speed + SPEED_UNIT*(speed_modifier)*braitenberg_matrix;
+        %speed_modifier = 1 - (sensor_values/range);
+        %speed = speed + SPEED_UNIT*(speed_modifier)*braitenberg_matrix;
         
         [speed, state] = braitenberg(state, wheel_weight_total, speed, WHEEL_WEIGHT_THRESHOLD, MAX_SPEED);
         for k = 1:2
@@ -258,14 +273,14 @@ while wb_robot_step(TIME_STEP) ~= -1
         right_speed = speed(1, 2);
     end
     
-
+    
     wb_motor_set_velocity(left_wheel, left_speed);
     wb_motor_set_velocity(right_wheel, right_speed);
     
     % read the sensors, e.g.:
-
-    % Process here sensor data, images, etc.
     
+    % Process here sensor data, images, etc.
+     
     % send actuator commands, e.g.:
     %  wb_motor_set_postion(motor, 10.0);
     

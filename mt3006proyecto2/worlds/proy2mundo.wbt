@@ -3,7 +3,7 @@ WorldInfo {
 }
 Viewpoint {
   orientation 1 0 0 4.71238898038469
-  position -2.1192591132390635 8.84363396202011 1.562722987166905
+  position 0.001543516870606215 20.340307183139238 3.126212149777408e-06
 }
 TexturedBackground {
 }
@@ -163,12 +163,16 @@ SolidPipe {
   }
 }
 Pioneer3dx {
-  translation -3.42 0.0975 1
+  translation -3.5 0.0975 -3.5
   rotation 0 1 0 3.14159
   controller "my_controller"
   extensionSlot [
     Camera {
       translation 0 0.15 -0.175
+      focus Focus {
+        focalLength 1000
+        maxFocalDistance 100
+      }
     }
     GPS {
     }
