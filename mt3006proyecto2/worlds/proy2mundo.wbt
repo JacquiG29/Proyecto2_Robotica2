@@ -163,7 +163,7 @@ SolidPipe {
   }
 }
 Pioneer3dx {
-  translation -3.50001 0.0975 0.78
+  translation -4 0 -4
   rotation 0 1 0 3.14159
   controller "my_controller"
   extensionSlot [

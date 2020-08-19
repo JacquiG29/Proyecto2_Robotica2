@@ -1,7 +1,7 @@
-%% IE - 3006 Robï¿½tica 2
+%% IE - 3006 Rob�tica 2
 % Jacqueline Guarcax
 % Gabriela Iriarte
-% Proyecto 2: Robot guï¿½a turï¿½stico
+% Proyecto 2: Robot gu�a tur�stico
 
 %% Activar debugging
 % uncomment the next two lines if you want to use
@@ -9,7 +9,7 @@
 desktop;
 %keyboard;
 
-%% Parï¿½metros de Webots
+%% Par�metros de Webots
 TIME_STEP = 64;
 MAX_SPEED = 1;
 MAX_SENSOR_NUMBER = 16;
@@ -19,13 +19,10 @@ MAX_SENSOR_VALUE = 1024;
 range = MAX_SENSOR_VALUE / 2;
 max_speed = 5.24;
 SPEED_UNIT = max_speed / 1024;
-MIN_DISTANCE = 0.1;
+MIN_DISTANCE = 0.11;
 WHEEL_WEIGHT_THRESHOLD = 100;  % minimal weight for the robot to turn
 
-goal_points= [-4, 0;
-    2, 4;
-    -3.5, 3.5;
-    2, -4];
+goal_points= [-3.5, 3.5];
 
 braitenberg_matrix = [
     150 0;
@@ -52,7 +49,7 @@ time_step  = wb_robot_get_basic_time_step();
 % get the display (not a real e-puck device !)
 camera_width = floor(wb_camera_get_width(camera));
 camera_height = floor(wb_camera_get_height(camera));
-byte_size = camera_width * camera_height * 4
+byte_size = camera_width * camera_height * 4;
 %  motor = wb_robot_get_device('motor');
 
 % Device IDs
@@ -84,13 +81,12 @@ end
 %% Valores iniciales
 pos = 0;
 angle = 0;
-xf = goal_points(3, 1);
-zf = goal_points(3, 2);
+xf = goal_points(1);
+zf = goal_points(2);
 xi = 0;
 zi = 0;
 
 alpha = 0.9;
-
 
 controlador = 1;
 epsilon = 1.8;
@@ -111,9 +107,13 @@ eD = 0;
 u_k = 0;
 
 % CONSTANTES DEL PID
-kP = 0.8;
-kD = 0.0001;
-kI = 0.01;
+% kP = 0.8;
+% kD = 0.0001;
+% kI = 0.01;
+kP = 0.2;
+kD = 0;
+kI = 0.001;
+
 
 speed = zeros(1,2);
 state = "f";
@@ -134,7 +134,8 @@ half_height = floor(wb_camera_get_height(camera) / 2);
 %success = wb_camera_save_image(camera, 'prueba', 1)
 %imwrite(image,'prueba.jpg')
 %% MAIN LOOP
-paquita=0;
+paquita = 0;
+stay_in_2 = 0;
 
 while wb_robot_step(TIME_STEP) ~= -1
     
@@ -142,24 +143,24 @@ while wb_robot_step(TIME_STEP) ~= -1
     
     
     %Visualizaci�n constante de la c�mara
-    figure(1)
+    % figure(1)
     rgb = wb_camera_get_image(camera);
-    image(rgb);
-    title('RGB Camera');
+    % image(rgb);
+    % title('RGB Camera');
     
     %Thresholding del color
     [BWR, maskedRGBImageR] = createMask(rgb);
     BWR = imfill(BWR, 4, 'holes');
-    BWR=bwareaopen(BWR,25);
-    figure(2)
-    imshow(BWR)
+    BWR = bwareaopen(BWR, 25);
+    % figure(2)
+    % imshow(BWR)
     if sum(BWR(:))> 0
         s1 = regionprops(BWR, 'centroid');
         centroide = s1.Centroid';
-        disp(centroide)
+        % disp(centroide)
     else
-        centroide=[half_width;0];
-        disp(centroide)
+        centroide = [half_width; 0];
+        % disp(centroide)
     end
     
     
@@ -190,7 +191,10 @@ while wb_robot_step(TIME_STEP) ~= -1
                 controlador = 2;
                 break
             else
+                if stay_in_2
+                else
                 controlador = 1;
+                end
             end
             
         end
@@ -202,35 +206,34 @@ while wb_robot_step(TIME_STEP) ~= -1
         
     end
     
-    
-    
     formatSpec = 'xi: %.2f - zi: %.2f control: %d \n';
     fprintf(formatSpec, xi, zi, controlador);
     
     % ------------- OFF -------------
     if controlador == 0
         
-        u0=half_width;
-        v0=half_height;
+        u0 = half_width;
+        v0 = half_height;
         
-        s = centroide-[u0,v0];%diferencia entre 
+        s = centroide - [u0,v0];  % diferencia entre
         
         ud = 0;
         vd = -22;
         
-        ev=vd-s(2);
-        ew=ud-s(1);
+        % Error de velocidad lineal y angular
+        ev = vd - s(2);
+        ew = ud - s(1);
         
-        v = 0.1*sign(s(2))*(ev);
+        v = 0.1*sign(s(2))*ev;
         w = 0.01*(ew);
         
         formatSpec = 's1: %.2f s2: %.2f  ev: %.2f ew: %.2f\n';
-        fprintf(formatSpec, s(1),s(2), ev, ew);
+        fprintf(formatSpec, s(1), s(2), ev, ew);
         
         left_speed = (v - w*DISTANCE_FROM_CENTER)/WHEEL_RADIUS;
         right_speed = (v + w*DISTANCE_FROM_CENTER)/WHEEL_RADIUS;
         
-        speed = [left_speed,right_speed]
+        speed = [left_speed, right_speed];
         for k = 1:2
             if speed(k) < -max_speed
                 speed(k) = -max_speed;
@@ -268,7 +271,7 @@ while wb_robot_step(TIME_STEP) ~= -1
     elseif controlador == 2
         %speed_modifier = 1 - (sensor_values/range);
         %speed = speed + SPEED_UNIT*(speed_modifier)*braitenberg_matrix;
-        
+        stay_in_2 = stay_in_2 + 1;
         [speed, state] = braitenberg(state, wheel_weight_total, speed, WHEEL_WEIGHT_THRESHOLD, MAX_SPEED);
         for k = 1:2
             if speed(k) < -max_speed
@@ -279,6 +282,10 @@ while wb_robot_step(TIME_STEP) ~= -1
         end
         left_speed = speed(1, 1);
         right_speed = speed(1, 2);
+        
+        if stay_in_2 == 4
+            stay_in_2 = 0;
+        end
     end
     
     
